@@ -31,7 +31,21 @@ const usersCollection=db.collection("users")
 
 // user api
 
- 
+ app.post('/users',async(req,res)=>{
+            const newuser=req.body
+            const email=newuser.email
+            const query={email:email}
+            const existingUser=await usersCollection.findOne(query)
+            if(existingUser){
+                res.send({message:"user alredy exiatis"})
+
+            }
+            else{
+   const result=await usersCollection.insertOne(newuser)
+            res.send(result)
+            }
+         
+        })
 
 
 
