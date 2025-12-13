@@ -47,7 +47,11 @@ const usersCollection=db.collection("users")
          
         })
 
-
+app.get('/products',async(req,res)=>{
+    const cursor=productsCollection.find().sort({created_at:-1}).limit(6)
+            const result=await cursor.toArray()
+            res.send(result)
+})
 
 
 
