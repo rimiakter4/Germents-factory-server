@@ -1,6 +1,6 @@
 const express =require("express")
 const app =express()
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors=require("cors")
 require('dotenv').config()
 const port =process.env.PORT||3000
@@ -46,16 +46,17 @@ const usersCollection=db.collection("users")
             }
          
         })
+
+
+        // products api
         app.get('/all-products', async (req, res) => {
   const result = await productsCollection
     .find()
-    .sort({ created_at: -1 }) // newest first
+    .sort({ created_at: -1 }) 
     .toArray();
 
   res.send(result);
 });
-
-
 
 
 app.get('/products', async (req, res) => {
@@ -65,7 +66,7 @@ app.get('/products', async (req, res) => {
   let cursor = productsCollection.find().sort({ created_at: -1 });
 
   if (limit) {
-    cursor = cursor.limit(limit); // যদি limit থাকে
+    cursor = cursor.limit(limit); 
   }
 
   const result = await cursor.toArray();
@@ -73,7 +74,12 @@ app.get('/products', async (req, res) => {
 });
 
 
-
+   app.get('/products/:id',async(req,res)=>{
+            const id=req.params.id
+            const qurey={_id : new ObjectId(id)}
+            const result=await productsCollection.findOne(qurey)
+            res.send(result)
+        })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
