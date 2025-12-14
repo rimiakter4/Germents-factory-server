@@ -46,14 +46,31 @@ const usersCollection=db.collection("users")
             }
          
         })
+        app.get('/all-products', async (req, res) => {
+  const result = await productsCollection
+    .find()
+    .sort({ created_at: -1 }) // newest first
+    .toArray();
 
-app.get('/products',async(req,res)=>{
-    const cursor=productsCollection.find().sort({created_at:-1}).limit(6)
-            const result=await cursor.toArray()
-            res.send(result)
-})
+  res.send(result);
+});
 
 
+
+
+app.get('/products', async (req, res) => {
+  // limit optional, default = 6
+  const limit = parseInt(req.query.limit) || null; 
+
+  let cursor = productsCollection.find().sort({ created_at: -1 });
+
+  if (limit) {
+    cursor = cursor.limit(limit); // যদি limit থাকে
+  }
+
+  const result = await cursor.toArray();
+  res.send(result);
+});
 
 
 
