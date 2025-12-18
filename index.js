@@ -3,10 +3,13 @@ const app =express()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors=require("cors")
 require('dotenv').config()
-const port =process.env.PORT||3000
+// const port =process.env.PORT||3000
+const port = process.env.PORT || 5000;
+
 app.use(cors())
 app.use(express.json())
 
+const stripe = require('stripe')(process.env.STIPE_SECRET);
 
 
 
@@ -27,6 +30,24 @@ const db=client.db("germents_factory_db")
 
 const productsCollection=db.collection("products")
 const usersCollection=db.collection("users")
+const ordersCollection=db.collection('orders')
+
+
+//  Create Order (Booking Submit)
+
+  app.post("/orders", async (req, res) => {
+    const order = req.body;
+
+    order.paymentStatus = order.paymentRequired ? "unpaid" : "cod";
+    order.orderStatus = "pending";
+    order.createdAt = new Date();
+
+    const result = await ordersCollection.insertOne(order);
+    res.send({ insertedId: result.insertedId });
+  });
+
+  
+
 
 
 // user api
@@ -73,13 +94,50 @@ app.get('/products', async (req, res) => {
   res.send(result);
 });
 
-
    app.get('/products/:id',async(req,res)=>{
             const id=req.params.id
             const qurey={_id : new ObjectId(id)}
             const result=await productsCollection.findOne(qurey)
             res.send(result)
         })
+
+
+app.post('/create-checkout-session', async (req, res) => {
+  const { productId, productTitle, price, quantity, email } = req.body;
+
+  if (!price || !quantity) return res.status(400).send({ error: "Price or quantity missing" });
+
+  // Stripe expects amount in cents
+  const amountInCents = Math.round(price * quantity * 100);
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd', 
+            product_data: { name: productTitle },
+            unit_amount: amountInCents,
+          },
+          quantity: 1,
+        },
+      ],
+      customer_email: email,
+      mode: 'payment',
+      success_url: `${process.env.SITE_DOMAIN}/dashboard/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.SITE_DOMAIN}/dashboard/cancel`,
+    });
+
+    res.send({ url: session.url });
+  } catch (err) {
+    console.error("Stripe Error:", err);
+    res.status(500).json({ error: "Stripe session creation failed" });
+  }
+});
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
