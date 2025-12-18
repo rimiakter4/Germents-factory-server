@@ -59,6 +59,26 @@ const ordersCollection=db.collection('orders')
   });
 
   
+// Update Payment Status
+  app.patch("/orders/payment/:id", async (req, res) => {
+    const id = req.params.id;
+    const { transactionId } = req.body;
+
+    const result = await ordersCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          paymentStatus: "paid",
+          transactionId,
+          paidAt: new Date(),
+        },
+      }
+    );
+
+    res.send(result);
+  });
+
+  
 
 
 
