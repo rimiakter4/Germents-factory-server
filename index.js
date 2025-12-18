@@ -46,6 +46,18 @@ const ordersCollection=db.collection('orders')
     res.send({ insertedId: result.insertedId });
   });
 
+  // Get Single Order (Payment Page)
+ app.get("/orders/:id", async (req, res) => {
+    const id = req.params.id;
+
+    const order = await ordersCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    if (!order) return res.status(404).send({ message: "Order not found" });
+    res.send(order);
+  });
+
   
 
 
