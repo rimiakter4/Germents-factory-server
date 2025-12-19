@@ -122,6 +122,19 @@ app.delete("/orders/:id", async (req, res) => {
          
         })
 
+// GET all users
+app.get('/users', async (req, res) => {
+  try {
+    const allUsers = await usersCollection.find().toArray();
+    res.send(allUsers);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Failed to fetch users" });
+  }
+});
+
+
+
 
         // products api
         app.get('/all-products', async (req, res) => {
