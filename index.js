@@ -9,7 +9,8 @@ const port = process.env.PORT || 5000;
 app.use(cors())
 app.use(express.json())
 
-const stripe = require('stripe')(process.env.STIPE_SECRET);
+// const stripe = require('stripe')(process.env.STIPE_SECRET);
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
 
 
 
@@ -57,21 +58,16 @@ const ordersCollection=db.collection('orders')
     if (!order) return res.status(404).send({ message: "Order not found" });
     res.send(order);
   });
-// Get Orders by Email (My Orders)
-app.get("/orders", async (req, res) => {
-  const email = req.query.email;
 
-  if (!email) {
-    return res.status(400).send({ message: "Email query is required" });
-  }
 
-  const result = await ordersCollection
-    .find({ email: email })
-    .sort({ createdAt: -1 })
-    .toArray();
+ app.get("/orders", async (req, res) => {
+    const email = req.query.email;
+    const orders = await ordersCollection
+      .find({ email })
+      .toArray();
+    res.send(orders);
+  });
 
-  res.send(result);
-});
 
   
 // Update Payment Status
@@ -94,6 +90,17 @@ app.get("/orders", async (req, res) => {
   });
 
   
+// Delete order only if status is pending
+app.delete("/orders/:id", async (req, res) => {
+  const id = req.params.id;
+
+  const result = await ordersCollection.deleteOne({
+    _id: new ObjectId(id),
+    orderStatus: "pending" 
+  });
+
+  res.send(result);
+});
 
 
 
@@ -148,13 +155,13 @@ app.get('/products', async (req, res) => {
             res.send(result)
         })
 
-
 app.post('/create-checkout-session', async (req, res) => {
-  const { productId, productTitle, price, quantity, email } = req.body;
+  const { productTitle, price, quantity, email, orderData } = req.body;
 
-  if (!price || !quantity) return res.status(400).send({ error: "Price or quantity missing" });
+  if (!price || !quantity) {
+    return res.status(400).send({ error: "Price or quantity missing" });
+  }
 
-  // Stripe expects amount in cents
   const amountInCents = Math.round(price * quantity * 100);
 
   try {
@@ -163,7 +170,7 @@ app.post('/create-checkout-session', async (req, res) => {
       line_items: [
         {
           price_data: {
-            currency: 'usd', 
+            currency: 'usd',
             product_data: { name: productTitle },
             unit_amount: amountInCents,
           },
@@ -172,6 +179,12 @@ app.post('/create-checkout-session', async (req, res) => {
       ],
       customer_email: email,
       mode: 'payment',
+
+      // ✅ metadata খুব জরুরি
+      metadata: {
+        orderData: JSON.stringify(orderData),
+      },
+
       success_url: `${process.env.SITE_DOMAIN}/dashboard/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.SITE_DOMAIN}/dashboard/cancel`,
     });
@@ -184,6 +197,47 @@ app.post('/create-checkout-session', async (req, res) => {
 });
 
 
+
+app.post("/orders/confirm-payment", async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).send({ message: "Session ID missing" });
+    }
+
+    // 1️ Stripe session verify
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status !== "paid") {
+      return res.status(400).send({ message: "Payment not completed" });
+    }
+
+    // 2️ Order data from metadata
+    const orderData = JSON.parse(session.metadata.orderData);
+
+    // 3️ Save order in DB
+    const order = {
+      ...orderData,
+      paymentStatus: "paid",
+      transactionId: session.payment_intent,
+      orderStatus: "pending",
+      paidAt: new Date(),
+      createdAt: new Date(),
+    };
+
+    const result = await ordersCollection.insertOne(order);
+
+    res.send({
+      success: true,
+      insertedId: result.insertedId,
+    });
+
+  } catch (error) {
+    console.error("Payment confirmation error:", error);
+    res.status(500).send({ message: "Payment verification failed" });
+  }
+});
 
 
     // Send a ping to confirm a successful connection
