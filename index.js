@@ -57,6 +57,21 @@ const ordersCollection=db.collection('orders')
     if (!order) return res.status(404).send({ message: "Order not found" });
     res.send(order);
   });
+// Get Orders by Email (My Orders)
+app.get("/orders", async (req, res) => {
+  const email = req.query.email;
+
+  if (!email) {
+    return res.status(400).send({ message: "Email query is required" });
+  }
+
+  const result = await ordersCollection
+    .find({ email: email })
+    .sort({ createdAt: -1 })
+    .toArray();
+
+  res.send(result);
+});
 
   
 // Update Payment Status
