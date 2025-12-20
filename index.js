@@ -207,7 +207,18 @@ app.delete('/products/:id', async (req, res) => {
     res.send(result);
 });
 
-
+app.patch('/products/toggle-home/:id', async (req, res) => {
+    const id = req.params.id;
+    const { showOnHome } = req.body; 
+    const query = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: {
+            showOnHome: showOnHome
+        },
+    };
+    const result = await productsCollection.updateOne(query, updateDoc);
+    res.send(result);
+});
 
 
 app.put('/products/:id', async (req, res) => {
