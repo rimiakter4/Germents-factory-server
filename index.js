@@ -122,19 +122,33 @@ app.delete("/orders/:id", async (req, res) => {
          
         })
 
+
+
 // GET all users
 app.get('/users', async (req, res) => {
   try {
-    const allUsers = await usersCollection.find().toArray();
-    res.send(allUsers);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send({ message: "Failed to fetch users" });
+    // Query ছাড়া সব user fetch হবে
+    const cursor = usersCollection.find(); 
+    const users = await cursor.toArray();
+
+    res.status(200).json(users);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 });
 
-
-
+// Express.js Backend Example
+app.patch('/users/:id', async (req, res) => {
+    const id = req.params.id;
+    const { role } = req.body;
+    const filter = { _id: new ObjectId(id) };
+    const updateDoc = {
+        $set: { role: role },
+    };
+    const result = await usersCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
 
         // products api
         app.get('/all-products', async (req, res) => {
@@ -161,12 +175,77 @@ app.get('/products', async (req, res) => {
   res.send(result);
 });
 
+app.get('/products/home', async (req, res) => {
+    
+    const query = { showOnHome: true };
+    
+ 
+    const result = await productsCollection
+        .find(query)        
+        .sort({ _id: -1 })  
+        .limit(6)           
+        .toArray();
+        
+    res.send(result);
+});
+
+
    app.get('/products/:id',async(req,res)=>{
             const id=req.params.id
             const qurey={_id : new ObjectId(id)}
             const result=await productsCollection.findOne(qurey)
             res.send(result)
         })
+
+
+
+
+app.delete('/products/:id', async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await productsCollection.deleteOne(query);
+    res.send(result);
+});
+
+
+
+
+app.put('/products/:id', async (req, res) => {
+    const id = req.params.id;
+    const updatedData = req.body;
+    const filter = { _id: new ObjectId(id) };
+    
+    const updateDoc = {
+        $set: {
+            name: updatedData.name,
+            description: updatedData.description,
+            price: updatedData.price,
+            category: updatedData.category,
+            images: updatedData.images, 
+            demoVideo: updatedData.demoVideo,
+            payment: updatedData.payment 
+        },
+    };
+
+    const result = await productsCollection.updateOne(filter, updateDoc);
+    res.send(result);
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 app.post('/create-checkout-session', async (req, res) => {
   const { productTitle, price, quantity, email, orderData } = req.body;
@@ -193,7 +272,7 @@ app.post('/create-checkout-session', async (req, res) => {
       customer_email: email,
       mode: 'payment',
 
-      // ✅ metadata খুব জরুরি
+     
       metadata: {
         orderData: JSON.stringify(orderData),
       },
