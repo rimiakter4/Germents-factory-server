@@ -162,6 +162,27 @@ app.get('/allorders', async (req, res) => {
   }
 });
 
+// addmin order get api by id 
+app.patch("/orders/:id", async (req, res) => {
+  const id = req.params.id;
+  const { status } = req.body;
+
+  const filter = { _id: new ObjectId(id) };
+  const updateDoc = {
+    $set: {
+      orderStatus: status,
+      updatedAt: new Date()
+    },
+  };
+
+  try {
+    const result = await ordersCollection.updateOne(filter, updateDoc);
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to update status" });
+  }
+});
+
 
 
 
