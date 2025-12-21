@@ -162,7 +162,7 @@ app.get('/allorders', async (req, res) => {
   }
 });
 
-// addmin order get api by id 
+// addmin order patch api by id 
 app.patch("/orders/:id", async (req, res) => {
   const id = req.params.id;
   const { status } = req.body;
@@ -183,7 +183,18 @@ app.patch("/orders/:id", async (req, res) => {
   }
 });
 
+// admin orders delete api by id
+app.delete("/orders/admin/:id", async (req, res) => {
+  const id = req.params.id;
+  
 
+  const result = await ordersCollection.deleteOne({
+    _id: new ObjectId(id),
+    orderStatus: "Rejected" 
+  });
+
+  res.send(result);
+});
 
 
 
