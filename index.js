@@ -69,9 +69,34 @@ const ordersCollection=db.collection('orders')
   });
 
 
-  
+//   app.get('/allorders',async (req, res) => {
+//   try {
+//     const { status, sort = 'desc' } = req.query;
+
+//     let query = {};
+//     if (status) {
+//       query.status = status; // Pending / Approved / Rejected
+//     }
+
+//     const sortOrder = sort === 'asc' ? 1 : -1;
+
+//     const orders = await ordersCollection
+//       .find(query)
+//       .sort({ createdAt: sortOrder })
+//       .toArray();
+
+//     res.send(orders);
+//   } catch (error) {
+//     res.status(500).send({ message: 'Failed to load orders' });
+//   }
+// });
+
 // Update Payment Status
-  app.patch("/orders/payment/:id", async (req, res) => {
+
+
+
+
+app.patch("/orders/payment/:id", async (req, res) => {
     const id = req.params.id;
     const { transactionId } = req.body;
 
@@ -101,6 +126,48 @@ app.delete("/orders/:id", async (req, res) => {
 
   res.send(result);
 });
+
+
+
+// admin all orders api
+
+
+//  admin all products get api
+app.get('/allorders', async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    let query = {};
+
+
+    if (status) {
+      query.orderStatus = status;
+    }
+
+    
+    if (search) {
+      query.$or = [
+        { email: { $regex: search, $options: "i" } },
+        { productTitle: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const orders = await ordersCollection
+      .find(query)
+      .sort({ createdAt: -1 }) 
+      .toArray();
+
+    res.send(orders);
+  } catch (error) {
+    res.status(500).send({ message: 'Failed to load orders' });
+  }
+});
+
+
+
+
+
+
+
 
 
 
@@ -241,6 +308,7 @@ app.put('/products/:id', async (req, res) => {
     const result = await productsCollection.updateOne(filter, updateDoc);
     res.send(result);
 });
+
 
 
 
