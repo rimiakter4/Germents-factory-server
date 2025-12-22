@@ -32,6 +32,125 @@ const db=client.db("germents_factory_db")
 const productsCollection=db.collection("products")
 const usersCollection=db.collection("users")
 const ordersCollection=db.collection('orders')
+const trackingCollection=db.collection('tracking')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// new tracking api
+app.post("/tracking", async (req, res) => {
+  const trackingData = req.body;
+  const result = await trackingCollection.insertOne(trackingData);
+  res.send(result);
+});
+
+;
+
+// tracking GET 
+app.get("/tracking/:id", async (req, res) => {
+  const orderId = req.params.id; 
+  const query = { orderId: orderId }; 
+  const result = await trackingCollection.find(query).sort({ updatedAt: -1 }).toArray();
+  res.send(result);
+});
+
+
+
+
+
+app.get("/orders/pending", async (req, res) => {
+  try {
+    const result = await ordersCollection
+      .find({ orderStatus: "pending" })
+      .sort({ _id: -1 }) 
+      .toArray();
+    res.send(result);
+  } catch (error) {
+    console.error("Pending orders error:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+// ২. Admin All Orders (Status & Search)
+app.get('/allorders', async (req, res) => {
+  try {
+    const { status, search } = req.query;
+    let query = {};
+    if (status) query.orderStatus = status;
+    if (search) {
+      query.$or = [
+        { email: { $regex: search, $options: "i" } },
+        { productTitle: { $regex: search, $options: "i" } }
+      ];
+    }
+    const orders = await ordersCollection.find(query).sort({ _id: -1 }).toArray();
+    res.send(orders);
+  } catch (error) {
+    res.status(500).send({ message: 'Failed to load orders' });
+  }
+});
+
+// ৩. User Orders by Email
+app.get("/orders", async (req, res) => {
+  const email = req.query.email;
+  if(!email) return res.send([]);
+  const orders = await ordersCollection.find({ email }).toArray();
+  res.send(orders);
+});
+
+// ৪. Patch Routes (Approve / Reject)
+app.patch("/orders/approve/:id", async (req, res) => {
+  const id = req.params.id;
+  const result = await ordersCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { orderStatus: "approved", approvedAt: new Date() } }
+  );
+  res.send(result);
+});
+
+app.patch("/orders/reject/:id", async (req, res) => {
+  const id = req.params.id;
+  const result = await ordersCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: { orderStatus: "rejected" } }
+  );
+  res.send(result);
+});
+
+// ৫. Get Single Order (সবসময় একদম নিচে থাকবে)
+app.get("/orders/:id", async (req, res) => {
+  const id = req.params.id;
+  if (!ObjectId.isValid(id)) return res.status(400).send({ message: "Invalid ID" });
+  const order = await ordersCollection.findOne({ _id: new ObjectId(id) });
+  if (!order) return res.status(404).send({ message: "Order not found" });
+  res.send(order);
+});
+
 
 
 //  Create Order (Booking Submit)
@@ -69,29 +188,6 @@ const ordersCollection=db.collection('orders')
   });
 
 
-//   app.get('/allorders',async (req, res) => {
-//   try {
-//     const { status, sort = 'desc' } = req.query;
-
-//     let query = {};
-//     if (status) {
-//       query.status = status; // Pending / Approved / Rejected
-//     }
-
-//     const sortOrder = sort === 'asc' ? 1 : -1;
-
-//     const orders = await ordersCollection
-//       .find(query)
-//       .sort({ createdAt: sortOrder })
-//       .toArray();
-
-//     res.send(orders);
-//   } catch (error) {
-//     res.status(500).send({ message: 'Failed to load orders' });
-//   }
-// });
-
-// Update Payment Status
 
 
 
@@ -133,35 +229,51 @@ app.delete("/orders/:id", async (req, res) => {
 
 
 //  admin all products get api
-app.get('/allorders', async (req, res) => {
-  try {
-    const { status, search } = req.query;
-    let query = {};
+// app.get('/allorders', async (req, res) => {
+//   try {
+//     const { status, search } = req.query;
+//     let query = {};
 
 
-    if (status) {
-      query.orderStatus = status;
-    }
+//     if (status) {
+//       query.orderStatus = status;
+//     }
 
     
-    if (search) {
-      query.$or = [
-        { email: { $regex: search, $options: "i" } },
-        { productTitle: { $regex: search, $options: "i" } }
-      ];
-    }
+//     if (search) {
+//       query.$or = [
+//         { email: { $regex: search, $options: "i" } },
+//         { productTitle: { $regex: search, $options: "i" } }
+//       ];
+//     }
 
-    const orders = await ordersCollection
-      .find(query)
-      .sort({ createdAt: -1 }) 
-      .toArray();
+//     const orders = await ordersCollection
+//       .find(query)
+//       .sort({ createdAt: -1 }) 
+//       .toArray();
 
-    res.send(orders);
+//     res.send(orders);
+//   } catch (error) {
+//     res.status(500).send({ message: 'Failed to load orders' });
+//   }
+// });
+// আপনার ব্যাকএন্ডের যেখানে সব API রুট আছে সেখানে এটি বসান
+app.get("/allorders", async (req, res) => {
+  const status = req.query.status;
+  let query = {};
+
+  if (status) {
+    // এটি ছোট হাত (a) বা বড় হাত (A) যাই হোক সব ডাটা খুঁজে আনবে
+    query.orderStatus = { $regex: new RegExp(`^${status}$`, "i") };
+  }
+
+  try {
+    const result = await orderCollection.find(query).toArray();
+    res.send(result);
   } catch (error) {
-    res.status(500).send({ message: 'Failed to load orders' });
+    res.status(500).send({ message: "Error fetching orders" });
   }
 });
-
 // addmin order patch api by id 
 app.patch("/orders/:id", async (req, res) => {
   const id = req.params.id;
@@ -196,6 +308,36 @@ app.delete("/orders/admin/:id", async (req, res) => {
   res.send(result);
 });
 
+// manager post api products 
+
+
+app.post('/products', async (req, res) => {
+    const product = req.body;
+    const result = await productsCollection.insertOne(product);
+    res.send(result);
+});
+
+
+
+app.get('/all-products/:email', async (req, res) => {
+    try {
+        const email = req.params.email;
+        
+       
+        if (!email) {
+            return res.status(400).send({ message: "Email is required" });
+        }
+
+    
+        const query = { sellerEmail: email };
+        const result = await productsCollection.find(query).toArray();
+        
+        res.send(result);
+    } catch (error) {
+        console.error("Error fetching products:", error);
+        res.status(500).send({ message: "Internal Server Error", error: error.message });
+    }
+});
 
 
 
@@ -250,15 +392,6 @@ app.patch('/users/:id', async (req, res) => {
 });
 
         // products api
-        app.get('/all-products', async (req, res) => {
-  const result = await productsCollection
-    .find()
-    .sort({ created_at: -1 }) 
-    .toArray();
-
-  res.send(result);
-});
-
 
 app.get('/products', async (req, res) => {
   // limit optional, default = 6
